@@ -45,7 +45,7 @@ object LocalApiServer {
 
     fun start(port: Int) {
         if (engine != null) return
-        engine = embeddedServer(CIO, port = port, host = "0.0.0.0") { module() }.also { it.start(wait = false) }
+        engine = embeddedServer(CIO, port = port, host = "127.0.0.1") { module() }.also { it.start(wait = false) }
     }
 
     fun stop() {
@@ -54,7 +54,11 @@ object LocalApiServer {
 
     private fun Application.module() {
         install(CORS) {
-            anyHost()
+            // Even Hub WebView sends requests with null Origin (file:// / local context).
+            // Allow only localhost origins; the wildcard anyHost() is intentionally avoided.
+            allowHost("localhost")
+            allowHost("127.0.0.1")
+            allowNullOrigin()   // WebView local context has no Origin header
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post)
             allowMethod(HttpMethod.Options)
