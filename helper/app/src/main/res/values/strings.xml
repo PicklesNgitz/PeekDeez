@@ -3,4 +3,5 @@
     <string name="app_name">G2 Deezer Bridge</string>
     <string name="listener_channel">G2 Bridge</string>
     <string name="listener_channel_desc">Keeps the local bridge server running while you use Deezer.</string>
+    <string name="bridge_running">Bridge active</string>
 </resources>

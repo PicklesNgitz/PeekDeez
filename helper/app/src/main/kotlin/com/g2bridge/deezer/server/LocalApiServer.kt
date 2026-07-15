@@ -131,7 +131,11 @@ object LocalApiServer {
                     call.respond(HttpStatusCode.InternalServerError, ErrorResponse("bridge has no app context"))
                     return@post
                 }
-                call.respond(DeezerLauncher.launch(ctx, req.type, req.id))
+                try {
+                    call.respond(DeezerLauncher.launch(ctx, req.type, req.id))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "invalid request"))
+                }
             }
         }
     }

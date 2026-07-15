@@ -49,7 +49,7 @@ class BridgeService : Service() {
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("Running on :$PORT")
+            .setContentText(getString(R.string.bridge_running))
             .setOngoing(true)
             .setContentIntent(pi)
             .build()
