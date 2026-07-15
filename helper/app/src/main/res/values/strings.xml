@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">G2 Deezer Bridge</string>
+    <string name="listener_channel">G2 Bridge</string>
+    <string name="listener_channel_desc">Keeps the local bridge server running while you use Deezer.</string>
+</resources>

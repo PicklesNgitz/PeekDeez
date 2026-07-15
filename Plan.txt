@@ -1,0 +1,126 @@
+Plan saved to: C:\Users\Badwolf\.claude\plans\unified-churning-thunder.md · /plan to edit
+Even Realities G2 → Deezer Controller
+
+Context
+
+Goal: an Even Realities G2 app that controls the running Deezer Android app on the user's phone. Glasses display now-playing (title / artist / album), transport controls (play/pause/next/previous/seek forward/rewind), a toggle to enable/disable shuffle, optional lyrics view (when available), and the ability to choose a track/album/playlist/music and launch it in Deezer.
+
+Voice is out of scope for this build (user removed it); STT/Soniox/the asr template's mic pipeline are not used. Shuffle toggle is via the G2 touchpad UI only.
+
+Why a 2-component build (confirmed blocker)
+
+The official Even Hub SDK is a WebView hosted by the Even Realities Android app. Its documented Device APIs expose: mic, location, camera, album (single image), IMU, touchpad events, device/user info, local storage, and networking (fetch/XHR/WebSockets). It explicitly does NOT expose: Android MediaSession, now-playing metadata, a notification listener, media-key dispatch, or intents / deezer:// launching (source: hub.evenrealities.com/docs/build/device-apis and /build/networking).
+
+Therefore the G2 plugin alone cannot read what Deezer is playing or command it. We need a second, native Android helper app that uses NotificationListenerService + MediaSessionManager to observe and drive the Deezer app's media session, fires deezer:// intents to launch chosen items, and calls Deezer/lyrics APIs server-side (no browser CORS). The plugin talks to the helper over local HTTP.
+
+Architecture
+
++-------------------+   fetch (http://127.0.0.1:8765)   +--------------------------+
+|  G2 Plugin        | <------------------------------> |  Android Helper (Kotlin)  |
+| (Vite+TS+even-toolkit,|                              |  - NotificationListener   |
+|  Even Hub WebView)   |                              |  - MediaController (Deezer)|
+|  glasses screens      |                              |  - deezer:// intents       |
+|  + companion screens  |                              |  - Deezer API (OkHttp)     |
++-------------------+                              |  - lrclib lyrics API       |
+        |                                          |  - local HTTP server :8765 |
+        | BLE (Even Hub app)                        |  - foreground service      |
++-------------------+                              +--------------------------+
+| Even Hub app + G2 |
++-------------------+
+        |
+        v  OS media session / intents
++-------------------+
+|  Deezer app        |
++-------------------+
+
+Two Git/git-able projects live under the working dir E:\localai\evenrealities\deezer:
+- plugin/ — the Even Hub plugin (web).
+- helper/ — the native Android app (Kotlin).
+
+Plugin stack (reuse, don't reinvent)
+
+- Scaffold from evenhub-templates minimal/ (Vite + TS + @evenrealities/even_hub_sdk + simulator): npx degit even-realities/evenhub-templates/minimal plugin.
+- Add even-toolkit (npm i even-toolkit) for: glasses display builders (scrollable list, text pane w/ headers), gesture/scroll-suppression helpers, highlight/scroll-offset navigation, and the companion React components (DrawerShell / NavBar) used for the Deezer search/browse phone screens. even-toolkit is built on the official SDK, so it composes with the chosen path.
+- The even-toolkit per-screen architecture (a glasses screen = a display() + action() pair wired through a screen router) is the pattern every glasses screen below follows.
+
+Required files (pattern; names representative)
+
+- plugin/app.json — declare network permission with whitelist: ["http://127.0.0.1:8765"]. No g2-microphone/phone-microphone (voice removed). HTTPS not required for this self-use LAN/http path (per user). Confirm app.json whitelist accepts a 127.0.0.1:PORT http origin during local dev; if the Even app blocks cleartext even to localhost, fall back to the phone's LAN IP over http (see Risks).
+- plugin/src/bridge/client.ts — typed fetch wrapper to helper REST; one function per endpoint (below).
+- plugin/src/glasses/screens/nowplaying.ts — screen: title/artist/album (pixel-accurate truncation via even-toolkit/pretext), progress bar, shuffle indicator, playback state. Pulls state from client.getNowPlaying().
+- plugin/src/glasses/screens/transport.ts — list screen: [Play/Pause] [Next] [Previous] [+15s] [-15s] [Shuffle: On|Off]. Highlight + click activate; scroll moves highlight; double-click back to now-playing.
+- plugin/src/glasses/screens/lyrics.ts — paginated plain lyrics (even-toolkit text pane / 2000-char textContainerUpgrade); scroll advances; double-click back.
+- plugin/src/glasses/controller.ts — maps SDK touchpad events (CLICK_EVENT, DOUBLE_CLICK_EVENT, SCROLL_TOP_EVENT, SCROLL_BOTTOM_EVENT) to the active screen's action(). Subscribes to now-playing updates (SSE from helper, falling back to 1 s poll) and re-renders the active screen.
+- plugin/src/companion/screens/search.tsx + browse.tsx — phone-side Deezer search + result lists (even-toolkit React components); picking an item calls client.launch(...).
+
+Glasses touchpad → action map (within active screen)
+
+┌───────────────┬─────────────────┬──────────────────────────┬─────────────────────┐
+│     Event     │   Now-Playing   │      Transport menu      │       Lyrics        │
+├───────────────┼─────────────────┼──────────────────────────┼─────────────────────┤
+│ click         │ play/pause      │ activate highlighted row │ (inactive)          │
+├───────────────┼─────────────────┼──────────────────────────┼─────────────────────┤
+│ double-click  │ go to Transport │ back to Now-Playing      │ back to Now-Playing │
+├───────────────┼─────────────────┼──────────────────────────┼─────────────────────┤
+│ scroll_top    │ cycle to Lyrics │ highlight up             │ prev page           │
+├───────────────┼─────────────────┼──────────────────────────┼─────────────────────┤
+│ scroll_bottom │ (none / cycle)  │ highlight down           │ next page           │
+└───────────────┴─────────────────┴──────────────────────────┴─────────────────────┘
+
+Helper app (new Android Studio / Kotlin project, sideloaded APK)
+
+- AndroidManifest.xml — NotificationListenerService, a foreground Service (keep-alive + battery-opt exemption prompt), INTERNET; intent-filter not required (it launches deezer:// via startActivity, not receives it).
+- DeezerMediaListener.kt (NotificationListenerService) — on onNotificationPosted, read StatusBarNotification.extras for the MediaSession parcelable for package com.deezer.android; build a MediaController; register a ControllerCallback for metadata + playback-state + shuffle changes.
+- MediaControllerOps.kt — playPause(), next(), previous(), seekDelta(ms), getNowPlaying(), setShuffle(enabled) via transportControls.setShuffleMode(SHUFFLE_MODE_ALL / SHUFFLE_MODE_NONE) and read controller.shuffleMode.
+- LocalApiServer.kt (Ktor or NanoHTTPD) bound 127.0.0.1:8765, CORS Access-Control-Allow-Origin: *, JSON endpoints (below).
+- DeezerApi.kt (OkHttp) — public API, no auth: /search?q=..., /album/{id}, /playlist/{id}, /genre, mapping Deezer's JSON into the plugin's shape. Calls are server-side so CORS never applies.
+- LyricsApi.kt (OkHttp) — https://lrclib.net/api/search?artist_name=&track_name= → plain (and optionally synced LRC) lyrics; 404 → null.
+- DeezerLauncher.kt — startActivity(Intent(ACTION_VIEW, Uri.parse("deezer://track|$album|playlist|radio/$id"))); detect Deezer not installed → no-op + flag.
+
+Helper REST protocol (single source of truth for both sides)
+
+GET  /nowplaying          → {title,artist,album,trackId,artUrl,durationMs,positionMs,isPlaying,shuffle:bool,repeat}
+GET  /nowplaying/stream   → text/event-stream of the above on change (preferred)
+POST /transport           {action:"play"|"pause"|"playPause"|"next"|"previous"|"seekDelta", deltaMs?:120000}
+POST /shuffle             {enabled:bool}
+GET  /search?q=&type=track|album|playlist → [{id,title,artist,albumName?,artUrl}]
+GET  /lyrics?artist=&track= → {plain?:string, synced?:string|null}   (404 if none)
+POST /launch              {type:"track"|"album"|"playlist"|"radio", id:string}
+
+Permissions / deploy steps
+
+- app.json network.whitelist must contain the helper origin; repack/reupload if it changes.
+- Install helper APK; in Settings → Notification access, enable the helper's listener (required to read Deezer's MediaSession). Prompt user to exempt the helper from battery optimization (foreground service).
+
+Risks (validate early, spike first)
+
+1. Even Hub WebView reaching http://127.0.0.1:8765 — cleartext/localhost in a WebView may be blocked. Spike this on day one with an empty minimal plugin fetching the helper. Fallback chain: 127.0.0.1 → phone LAN IP over http → local HTTPS w/ self-signed (mTLS) only if forced. Log which works.
+2. Deezer's MediaSession honoring external commands — play/pause/next/prev/seek and shuffle should be supported; confirm with a 30-line helper PoC before building UI. If a control is unsupported, hide that glasses row rather than ship a dead button.
+3. Notification listener being killed — foreground service + battery exemption needed; document the user-facing toggles.
+4. Lyrics coverage — partial via lrclib; show "Lyrics unavailable" gracefully, never error the screen.
+
+Out of scope (defer)
+
+- Voice / STT / Soniox / g2-microphone (user removed voice).
+- Deezer OAuth / user library / personal playlists (Phase 1 = public search only).
+- Synced/karaoke lyrics highlighting (Phase 1 = plain paginated).
+- Volume control (MediaSession can't reliably set Deezer's volume).
+
+Phased delivery
+
+- Phase 1 (this build): helper (now-playing read + play/pause/next/prev/seek ± + shuffle + deezer:// track/album/playlist launch + Deezer search + lrclib lyrics + :8765 server w/ CORS) · plugin (now-playing / transport / lyrics screens + companion search/browse + launch + SSE/poll rendering). MVP.
+- Phase 2 (optional later): re-add voice via asr template + Soniox + intent parser; seek-± buttons; Deezer OAuth + personal playlists; synced LRC karaoke; volume.
+
+Verification (end-to-end)
+
+1. Helper PoC (before any glasses UI): install Deezer, play a track. adb forward not needed (127.0.0.1 is on-phone) — from a terminal on the phone or via adb shell curl http://127.0.0.1:8765/nowplaying returns Deezer's title/artist/album + isPlaying + shuffle. curl -XPOST .../transport -d '{"action":"next"}' advances Deezer; .../shuffle {"enabled":true} toggles shuffle and reflects in the Deezer UI. Getting-launch works via curl -XPOST .../launch -d '{"type":"track","id":"3154743"}'.
+2. Plugin ↔ helper reach spike: npm run dev; evenhub-simulator http://localhost:5173; in the minimal plugin call /nowplaying over the simulator — confirms whitelist + CORS path. Resolve any http/localhost block here (Risk 1) before building screens.
+3. Full glasses flow: in the simulator, now-playing screen renders live Deezer metadata; touchpad click = play/pause (Deezer responds); double-click → transport menu → next/previous/seek±15/shuffle rows all drive the real Deezer app; double-click from now-playing → lyrics screen shows lyrics for the current track when lrclib has them, else "Lyrics unavailable".
+4. Companion pick → launch: on the phone companion route, search "bad michael jackson", tap result → helper posts /launch {type:track,id} → Deezer app switches and plays it → glasses now-playing updates within ~1 s.
+5. Defensive checks: Deezer killed/backgrounded → /nowplaying returns last known or empty (no crash); helper down → plugin screens show "Bridge offline" (no unhandled rejections).
+
+Notes for implementation start
+
+- Scaffold plugin/ and helper/ as two projects under E:\localai\evenrealities\deezer (current dir is empty/greenfield).
+- First executable step after approval: review evenhub-templates/minimal's app.json shape and the actual bridge.onEvenHubEvent event constants in the installed @evenrealities/even_hub_sdk types, then write the helper PoC (Risk 2) and the reach spike (Risk 1) in parallel.
+- When the plan is approved, translate this file into tasks/todo.md checkable items per

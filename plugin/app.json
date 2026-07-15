@@ -1,0 +1,17 @@
+{
+  "package_id": "com.evenrealities.g2deezer",
+  "edition": "202601",
+  "name": "G2 Deezer Controller",
+  "version": "0.1.0",
+  "min_app_version": "2.0.0",
+  "min_sdk_version": "0.0.10",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Talks to the local G2 Deezer Bridge helper (127.0.0.1:8765) for now-playing, transport, shuffle, Deezer search and lyrics.",
+      "whitelist": ["http://127.0.0.1:8765"]
+    }
+  ],
+  "supported_languages": ["en"]
+}
