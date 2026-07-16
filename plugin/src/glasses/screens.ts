@@ -1,6 +1,28 @@
-// Glasses screen content builders. Each returns a plain string (multi-line)
-// pushed to the single text container. ~10 visible lines; keep lines <= ~26 chars.
 import type { NowPlaying } from '../bridge/client'
+import { getTextWidth } from '@evenrealities/pretext'
+
+// Container is 576px wide, 4px padding each side → 568px usable.
+const MAX_PX = 568
+// Highlighted lines have '▶ ' prefix (accounts for ~12px extra).
+const MAX_PX_HIGHLIGHT = MAX_PX - 12
+
+function wrapLine(text: string, maxPx: number): string[] {
+  if (getTextWidth(text) <= maxPx) return [text]
+  const words = text.split(' ')
+  const out: string[] = []
+  let cur = ''
+  for (const w of words) {
+    const candidate = cur ? `${cur} ${w}` : w
+    if (getTextWidth(candidate) <= maxPx) {
+      cur = candidate
+    } else {
+      if (cur) out.push(cur)
+      cur = w
+    }
+  }
+  if (cur) out.push(cur)
+  return out.length ? out : [text]
+}
 
 const SEP = '────────────────────────'
 const ARROW = '▶'          // ▶ highlight marker
@@ -92,17 +114,34 @@ export function nextHighlight(current: number, dir: -1 | 1): number {
 }
 
 // ---- Lyrics ------------------------------------------------------------
-export interface LyricsState { scroll: number; lines: string[]; artist: string; track: string }
+export interface LyricsState {
+  scroll: number
+  lines: string[]
+  artist: string
+  track: string
+  syncedMs: number[] | null  // timestamp per line (ms); null = plain/unparsed
+  manualScroll: boolean      // user scrolled; suppress auto-scroll until track changes
+}
 
 export const LYRICS_SLOTS = 7
 
 export function lyricsContent(st: LyricsState): string {
+  if (st.lines.length === 1 && st.lines[0] === 'Loading...') {
+    return ['LYRICS   ⏬ back', SEP, '', 'Loading lyrics...'].join('\n')
+  }
   if (!st.lines.length) {
     return ['LYRICS   ⏬ back', SEP, '', 'No lyrics for', trunc(`${st.track}`, 24), trunc(`by ${st.artist}`, 24)].join('\n')
   }
   const end = Math.min(st.scroll + LYRICS_SLOTS, st.lines.length)
-  const window = st.lines.slice(st.scroll, end).map(l => trunc(l, 26)).join('\n')
-  const up = st.scroll > 0 ? '▲ more' : ''
-  const down = end < st.lines.length ? '▼ more' : ''
+  const highlightIdx = st.syncedMs ? st.scroll + Math.floor(LYRICS_SLOTS / 2) : -1
+  const window = st.lines.slice(st.scroll, end).map((l, i) => {
+    const absIdx = st.scroll + i
+    if (absIdx === highlightIdx) {
+      return wrapLine(l, MAX_PX_HIGHLIGHT).map((seg, si) => si === 0 ? `▶ ${seg}` : `  ${seg}`).join('\n')
+    }
+    return wrapLine(l, MAX_PX).join('\n')
+  }).join('\n')
+  const up = st.scroll > 0 ? '▲' : ''
+  const down = end < st.lines.length ? '▼' : ''
   return ['LYRICS   ⏬ back', SEP, window, up, down].filter(Boolean).join('\n')
 }

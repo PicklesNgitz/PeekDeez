@@ -21,14 +21,19 @@ object LyricsApi {
 
     suspend fun find(artist: String, track: String): LyricsResponse? = withContext(Dispatchers.IO) {
         val url = "$BASE/search".toHttpUrl().newBuilder()
-            .addQueryParameter("artist_name", artist)
+            .addQueryParameter("q", "$track $artist")
             .addQueryParameter("track_name", track)
+            .addQueryParameter("artist_name", artist)
             .build()
         val body = get(url.toString()) ?: return@withContext null
         val arr = runCatching { json.parseToJsonElement(body).jsonArray }.getOrNull()
             ?: return@withContext null
         val items = arr.mapNotNull { it as? JsonObject }
         val hit = items.firstOrNull { o ->
+            o["plainLyrics"]?.jsonPrimitive?.contentOrNull?.isNotEmpty() == true &&
+            o["trackName"]?.jsonPrimitive?.contentOrNull
+                ?.equals(track, ignoreCase = true) == true
+        } ?: items.firstOrNull { o ->
             o["plainLyrics"]?.jsonPrimitive?.contentOrNull?.isNotEmpty() == true
         } ?: return@withContext null
         LyricsResponse(
