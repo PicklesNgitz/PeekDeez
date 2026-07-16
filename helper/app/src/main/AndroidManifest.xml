@@ -9,7 +9,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="G2 Deezer Bridge"
+        android:label="PeekDeez"
         android:icon="@android:drawable/sym_def_app_icon"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
@@ -17,7 +17,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="G2 Deezer Bridge">
+            android:label="PeekDeez">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
