@@ -22,8 +22,8 @@
     <application
         android:allowBackup="false"
         android:label="PeekDeez"
-        android:icon="@android:drawable/sym_def_app_icon"
-        android:roundIcon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/ic_peekdeez"
+        android:roundIcon="@drawable/ic_peekdeez"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <activity
