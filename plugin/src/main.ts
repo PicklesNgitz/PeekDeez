@@ -18,19 +18,24 @@ if (!ok) console.warn('createDisplay returned non-zero')
 
 // Start now-playing SSE; fall back to 1-second polling if EventSource fails.
 let stopSse: (() => void) | null = null
-let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollTimer: ReturnType<typeof setTimeout> | null = null
 
 function startPolling() {
   if (pollTimer) return
-  pollTimer = setInterval(async () => {
-    try { store.set(await api.nowPlaying()) } catch { /* bridge offline */ }
-  }, 1000)
+  let delay = 1000
+  const MAX_DELAY = 30_000
+  async function tick() {
+    try { store.set(await api.nowPlaying()); delay = 1000 }
+    catch { delay = Math.min(delay * 2, MAX_DELAY) }
+    pollTimer = setTimeout(tick, delay)
+  }
+  pollTimer = setTimeout(tick, delay)
 }
 
 function startSse() {
   try {
     stopSse = api.nowPlayingStream((np) => {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      if (pollTimer) { clearTimeout(pollTimer); pollTimer = null }
       store.set(np)
     })
   } catch {
@@ -58,6 +63,6 @@ sdk.onEvenHubEvent((event) => {
     sysType === OsEventTypeList.ABNORMAL_EXIT_EVENT
   ) {
     stopSse?.()
-    if (pollTimer) clearInterval(pollTimer)
+    if (pollTimer) clearTimeout(pollTimer)
   }
 })

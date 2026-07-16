@@ -126,6 +126,10 @@ object LocalApiServer {
             get("/search") {
                 val q = call.request.queryParameters["q"] ?: ""
                 val type = call.request.queryParameters["type"] ?: "track"
+                if (type !in setOf("track", "album", "playlist")) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("invalid type"))
+                    return@get
+                }
                 call.respond(DeezerApi.search(q, type))
             }
 
