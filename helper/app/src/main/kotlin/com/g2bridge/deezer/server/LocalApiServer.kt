@@ -18,6 +18,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
@@ -25,6 +26,7 @@ import io.ktor.server.engine.ApplicationEngine
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.CORS
+import io.ktor.server.request.header
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondTextWriter
@@ -52,11 +54,23 @@ object LocalApiServer {
         engine?.stop(1000, 2000); engine = null
     }
 
+    private val ALLOWED_HOSTS = setOf("127.0.0.1:8765", "localhost:8765")
+
     private fun Application.module() {
+        // Defeat DNS rebinding: reject any request whose Host header isn't the
+        // loopback address. A rebinding attack sends Host: attacker.com — this
+        // rejects it before any route runs. Combined with binding to 127.0.0.1,
+        // this makes anyHost() CORS safe: external callers can't reach the port
+        // and rebound callers are rejected here.
+        intercept(ApplicationCallPipeline.Plugins) {
+            val host = call.request.header(HttpHeaders.Host) ?: ""
+            if (host !in ALLOWED_HOSTS) {
+                call.respond(HttpStatusCode.Forbidden)
+                finish()
+            }
+        }
         install(CORS) {
-            // Server bound to 127.0.0.1 — unreachable from network.
-            // Host binding is the security boundary; anyHost() adds no exposure.
-            anyHost()
+            anyHost() // Origin varies (file:// → null, dev server → LAN IP); Host check is the guard.
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post)
             allowMethod(HttpMethod.Options)
