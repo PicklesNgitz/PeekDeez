@@ -128,10 +128,17 @@ export function initCompanion(root: HTMLElement) {
     }
   }
 
+  const VALID_LAUNCH_TYPES = ['track', 'album', 'playlist', 'radio'] as const
+  type LaunchType = typeof VALID_LAUNCH_TYPES[number]
+
   async function launchItem(item: SearchResult) {
+    if (!VALID_LAUNCH_TYPES.includes(item.type as LaunchType)) {
+      showToast('Unknown content type')
+      return
+    }
     showToast('Launching…')
     try {
-      const res = await api.launch(item.type as 'track' | 'album' | 'playlist' | 'radio', item.id)
+      const res = await api.launch(item.type as LaunchType, item.id)
       if (!res.installed) {
         showToast('Deezer not found — is it installed?')
       } else {

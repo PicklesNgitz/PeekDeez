@@ -127,6 +127,10 @@ object DeezerController {
                 tc.playFromUri(android.net.Uri.parse("https://www.deezer.com/playlist/$id"), extras)
                 true
             }
+            "radio" -> {
+                tc.playFromUri(android.net.Uri.parse("https://www.deezer.com/radio/$id"), extras)
+                true
+            }
             else -> false
         }
     }
