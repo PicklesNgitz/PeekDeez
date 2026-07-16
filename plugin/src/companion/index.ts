@@ -12,8 +12,29 @@ export function initCompanion(root: HTMLElement) {
     <div class="c-shell">
       <header class="c-header">
         <span class="c-logo">PeekDeez</span>
-        <span class="c-np" id="c-np"></span>
+        <div class="c-header-right">
+          <span class="c-np" id="c-np"></span>
+          <button class="c-help-btn" id="c-help-btn" aria-label="Help">?</button>
+        </div>
       </header>
+
+      <div class="c-help" id="c-help" hidden>
+        <div class="c-help-section">Glasses controls</div>
+        <div class="c-help-row"><span class="c-help-key">Tap</span><span>Play / Pause</span></div>
+        <div class="c-help-row"><span class="c-help-key">Double tap</span><span>Next track</span></div>
+        <div class="c-help-row"><span class="c-help-key">Swipe up</span><span>Transport menu</span></div>
+        <div class="c-help-row"><span class="c-help-key">Swipe down</span><span>Lyrics</span></div>
+        <div class="c-help-section" style="margin-top:12px">Transport menu</div>
+        <div class="c-help-row"><span class="c-help-key">Swipe up/down</span><span>Navigate options</span></div>
+        <div class="c-help-row"><span class="c-help-key">Tap</span><span>Activate</span></div>
+        <div class="c-help-row"><span class="c-help-key">Double tap</span><span>Back</span></div>
+        <div class="c-help-section" style="margin-top:12px">Lyrics</div>
+        <div class="c-help-row"><span class="c-help-key">Swipe up/down</span><span>Scroll manually</span></div>
+        <div class="c-help-row"><span class="c-help-key">Double tap</span><span>Back</span></div>
+        <div class="c-help-section" style="margin-top:12px">Setup</div>
+        <div class="c-help-row" style="display:block;color:#aaa;font-size:13px;line-height:1.5">Open the PeekDeez Bridge app on your phone and tap Start Bridge before using the glasses controls.</div>
+      </div>
+
       <div class="c-tabs" id="c-tabs">
         <button class="c-tab c-tab--active" data-t="track">Tracks</button>
         <button class="c-tab" data-t="album">Albums</button>
@@ -30,11 +51,19 @@ export function initCompanion(root: HTMLElement) {
     </div>
   `
 
-  const npEl    = root.querySelector<HTMLElement>('#c-np')!
+  const npEl     = root.querySelector<HTMLElement>('#c-np')!
+  const helpBtn  = root.querySelector<HTMLButtonElement>('#c-help-btn')!
+  const helpEl   = root.querySelector<HTMLElement>('#c-help')!
   const searchEl = root.querySelector<HTMLInputElement>('#c-search')!
   const tabsEl   = root.querySelector<HTMLElement>('#c-tabs')!
   const resultsEl = root.querySelector<HTMLElement>('#c-results')!
   const toastEl   = root.querySelector<HTMLElement>('#c-toast')!
+
+  helpBtn.addEventListener('click', () => {
+    const open = !helpEl.hidden
+    helpEl.hidden = open
+    helpBtn.classList.toggle('c-help-btn--active', !open)
+  })
 
   store.subscribe((np) => {
     npEl.textContent = np.title ? `${np.artist} – ${np.title}` : ''
