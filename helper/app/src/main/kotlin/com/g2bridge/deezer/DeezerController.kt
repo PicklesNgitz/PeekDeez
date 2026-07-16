@@ -6,7 +6,7 @@ import android.media.session.PlaybackState
 import android.os.SystemClock
 
 object DeezerController {
-    private const val DEEZER_PKG = "com.deezer.android"
+    private const val DEEZER_PKG = "deezer.android.app"
 
     @Volatile private var current: MediaController? = null
     private var callback: MediaController.Callback? = null
@@ -53,9 +53,11 @@ object DeezerController {
         val state = c.playbackState
         val md = c.metadata
         val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-        // shuffleMode/repeatMode are API 29+; minSdk is now 29
-        val shuffleMode = try { c.shuffleMode } catch (_: Throwable) { 0 }
-        val repeatMode  = try { c.repeatMode  } catch (_: Throwable) { 0 }
+        // android.media.session.MediaController has no shuffleMode/repeatMode property.
+        // Read from PlaybackState extras if Deezer sets them; default to false/off.
+        val extras = state?.extras
+        val shuffleMode = extras?.getInt("android.media.extra.SHUFFLE_MODE", 0) ?: 0
+        val repeatMode  = extras?.getInt("android.media.extra.REPEAT_MODE",  0) ?: 0
         return NowPlaying(
             title     = md?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty(),
             artist    = md?.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty(),
@@ -108,7 +110,11 @@ object DeezerController {
     }
 
     fun setShuffle(enabled: Boolean) {
-        controls()?.setShuffleMode(if (enabled) 1 else 0)
+        // TransportControls.setShuffleMode is not on the framework API.
+        // Send a custom action that Deezer may honour; best-effort only.
+        val mode = if (enabled) 1 else 0
+        controls()?.sendCustomAction("android.media.action.SET_SHUFFLE_MODE",
+            android.os.Bundle().apply { putInt("android.media.extra.SHUFFLE_MODE", mode) })
         recomputeAndEmit()
     }
 }

@@ -4,6 +4,7 @@
 import {
   type EvenAppBridge,
   TextContainerProperty,
+  TextContainerUpgrade,
   CreateStartUpPageContainer,
 } from '@evenrealities/even_hub_sdk'
 
@@ -24,7 +25,7 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<boolean> {
 // Push a content string to the glasses display.
 export async function renderText(bridge: EvenAppBridge, content: string): Promise<void> {
   try {
-    await bridge.textContainerUpgrade({ containerID: CONTAINER_ID, content })
+    await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: CONTAINER_ID, content }))
   } catch (e) {
     // Upgrades can race with reconnects; swallow — next event re-renders.
     console.warn('textContainerUpgrade failed', e)

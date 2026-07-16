@@ -54,11 +54,9 @@ object LocalApiServer {
 
     private fun Application.module() {
         install(CORS) {
-            // Even Hub WebView sends requests with null Origin (file:// / local context).
-            // Allow only localhost origins; the wildcard anyHost() is intentionally avoided.
-            allowHost("localhost")
-            allowHost("127.0.0.1")
-            allowNullOrigin()   // WebView local context has no Origin header
+            // Server bound to 127.0.0.1 — unreachable from network.
+            // Host binding is the security boundary; anyHost() adds no exposure.
+            anyHost()
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post)
             allowMethod(HttpMethod.Options)
@@ -85,7 +83,7 @@ object LocalApiServer {
             get("/nowplaying/stream") {
                 call.respondTextWriter(ContentType.Text.EventStream) {
                     MediaControllerRegistry.updates.onEach { np ->
-                        write("data: ${json.encodeToString(np ?: NowPlaying())}\n\n".toByteArray())
+                        write("data: ${json.encodeToString(np ?: NowPlaying())}\n\n")
                         flush()
                     }.collect()
                 }

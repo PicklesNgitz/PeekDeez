@@ -5,7 +5,7 @@ import android.content.Intent
 import android.net.Uri
 
 object DeezerLauncher {
-    private const val DEEZER_PKG = "com.deezer.android"
+    private const val DEEZER_PKG = "deezer.android.app"
 
     fun isDeezerInstalled(ctx: Context): Boolean = try {
         ctx.packageManager.getPackageInfo(DEEZER_PKG, 0); true

@@ -47,16 +47,15 @@ class MainActivity : ComponentActivity() {
                     }, onBatteryOpt = {
                         startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                     }, onStartBridge = {
-                        startForegroundService<Intent>(Intent(this@MainActivity, BridgeService::class.java))
+                        val intent = Intent(this@MainActivity, BridgeService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            startForegroundService(intent)
+                        else
+                            startService(intent)
                     })
                 }
             }
         }
-    }
-
-    private inline fun <reified T : android.content.Service> startForegroundService(intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-        else startService(intent)
     }
 }
 

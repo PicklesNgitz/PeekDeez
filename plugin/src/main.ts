@@ -1,53 +1,59 @@
 import {
   waitForEvenAppBridge,
-  TextContainerProperty,
-  CreateStartUpPageContainer,
   OsEventTypeList,
 } from '@evenrealities/even_hub_sdk'
+import { bridge as api } from './bridge/client'
+import { store } from './state'
+import { createDisplay } from './glasses/render'
+import { initController } from './glasses/controller'
 
-const bridge = await waitForEvenAppBridge()
+const sdk = await waitForEvenAppBridge()
 
-const mainText = new TextContainerProperty({
-  xPosition: 0,
-  yPosition: 0,
-  width: 576,
-  height: 288,
-  borderWidth: 0,
-  borderColor: 5,
-  paddingLength: 4,
-  containerID: 1,
-  containerName: 'main',
-  content: 'Hello from G2!\nDouble-tap to exit.',
-  isEventCapture: 1,
-})
+const ok = await createDisplay(sdk)
+if (!ok) console.warn('createDisplay returned non-zero')
 
-const result = await bridge.createStartUpPageContainer(
-  new CreateStartUpPageContainer({
-    containerTotalNum: 1,
-    textObject: [mainText],
-  }),
-)
+// Start now-playing SSE; fall back to 1-second polling if EventSource fails.
+let stopSse: (() => void) | null = null
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
-console.log('Page created:', result === 0 ? 'success' : `failed (${result})`)
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(async () => {
+    try { store.set(await api.nowPlaying()) } catch { /* bridge offline */ }
+  }, 1000)
+}
 
-// Event routing, critical details:
-//   • Protobuf omits zero-value fields on the wire, so CLICK_EVENT (0)
-//     arrives as `undefined`. Always coalesce with `?? 0` before comparing.
-//   • Taps/double-taps/lifecycle come through `event.sysEvent`.
-//     Scroll gestures come through `event.textEvent`. Never mix them.
-//   • Double-tap → `shutDownPageContainer(1)` is a root-level check: it
-//     must fire no matter which envelope the event arrives in, so users
-//     can always exit the app.
-const unsubscribe = bridge.onEvenHubEvent(event => {
-  const sysType = event.sysEvent?.eventType ?? null
-  const textType = event.textEvent?.eventType ?? null
-
-  if (sysType === OsEventTypeList.DOUBLE_CLICK_EVENT || textType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
-    bridge.shutDownPageContainer(1)
-    return
+function startSse() {
+  try {
+    stopSse = api.nowPlayingStream((np) => {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      store.set(np)
+    })
+  } catch {
+    startPolling()
   }
+}
 
-  if (sysType === OsEventTypeList.SYSTEM_EXIT_EVENT || sysType === OsEventTypeList.ABNORMAL_EXIT_EVENT) {
-    unsubscribe()
+startSse()
+
+// Fallback: if no SSE update in 3s, also start polling.
+setTimeout(() => {
+  if (!store.get().title) startPolling()
+}, 3000)
+
+// Initialize the glasses controller (event routing + rendering).
+initController(sdk)
+
+// Exit: tear down on double-tap from root level only if controller hasn't consumed it.
+// The controller handles DOUBLE_CLICK for screen navigation; root-level exit is handled
+// inside the controller via shutDownPageContainer when no other action applies.
+sdk.onEvenHubEvent((event) => {
+  const sysType = event.sysEvent?.eventType ?? null
+  if (
+    sysType === OsEventTypeList.SYSTEM_EXIT_EVENT ||
+    sysType === OsEventTypeList.ABNORMAL_EXIT_EVENT
+  ) {
+    stopSse?.()
+    if (pollTimer) clearInterval(pollTimer)
   }
 })

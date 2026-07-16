@@ -4,7 +4,6 @@ import type { NowPlaying } from '../bridge/client'
 
 const SEP = '────────────────────────'
 const ARROW = '▶'          // ▶ highlight marker
-const PLAY = '▶'
 const PAUSE = '⏸'          // ⏸
 const SHUF = '♪'           // ♪ shuffle
 
@@ -42,7 +41,6 @@ export function nowPlayingContent(np: NowPlaying): string {
       `${PAUSE} Bridge ↻ tap=play/pause`,
     ].join('\n')
   }
-  const state = np.isPlaying ? `${PLAY} Playing` : `${PAUSE} Paused`
   const shuf = `${SHUF} Shuffle: ${np.shuffle ? 'ON ' : 'OFF'}`
   return [
     'NOW PLAYING',
