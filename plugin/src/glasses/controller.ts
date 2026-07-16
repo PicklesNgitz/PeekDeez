@@ -52,7 +52,8 @@ function render() {
   const np = store.get()
   let content: string
   if (screen === 'nowplaying') {
-    content = nowPlayingContent(np)
+    const elapsed = np.isPlaying && np.timestampMs > 0 ? Date.now() - np.timestampMs : 0
+    content = nowPlayingContent({ ...np, positionMs: np.positionMs + elapsed })
   } else if (screen === 'transport') {
     content = transportContent(np, transport)
   } else {
@@ -119,9 +120,11 @@ function handleEvent(sysType: OsEventTypeList | null, textType: OsEventTypeList 
     if (sysType === OsEventTypeList.CLICK_EVENT) {
       api.transport('playPause')
     } else if (sysType === OsEventTypeList.DOUBLE_CLICK_EVENT || textType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
+      api.transport('next')
+    } else if (textType === OsEventTypeList.SCROLL_TOP_EVENT) {
       screen = 'transport'
       render()
-    } else if (textType === OsEventTypeList.SCROLL_TOP_EVENT) {
+    } else if (textType === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
       screen = 'lyrics'
       loadLyrics()
       render()
@@ -171,8 +174,11 @@ export function initController(bridge: EvenAppBridge) {
     render()
   })
 
-  // Auto-scroll timer: runs every 500ms, interpolates position independently of SSE.
-  setInterval(() => autoScroll(), 500)
+  // Tick every 500ms: update now-playing progress bar + lyrics auto-scroll.
+  setInterval(() => {
+    if (screen === 'nowplaying' && store.get().isPlaying) render()
+    autoScroll()
+  }, 500)
 
   bridge.onEvenHubEvent((event) => {
     const sysType = event.sysEvent
