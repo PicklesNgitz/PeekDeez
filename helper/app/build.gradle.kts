@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.g2bridge.deezer"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 33
         versionCode = 1
         versionName = "0.1.0"
