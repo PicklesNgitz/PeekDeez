@@ -6,6 +6,10 @@ import { bridge as api } from './bridge/client'
 import { store } from './state'
 import { createDisplay } from './glasses/render'
 import { initController } from './glasses/controller'
+import { initCompanion } from './companion/index'
+
+// Companion UI runs immediately — no SDK dependency.
+initCompanion(document.getElementById('app')!)
 
 const sdk = await waitForEvenAppBridge()
 

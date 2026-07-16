@@ -109,6 +109,28 @@ object DeezerController {
         recomputeAndEmit()
     }
 
+    fun playFromId(type: String, id: String): Boolean {
+        val tc = controls() ?: return false
+        val extras = android.os.Bundle()
+        return when (type) {
+            "track" -> {
+                // Try media ID first (numeric Deezer ID), then URI form.
+                tc.playFromMediaId(id, extras)
+                tc.playFromUri(android.net.Uri.parse("https://www.deezer.com/track/$id"), extras)
+                true
+            }
+            "album" -> {
+                tc.playFromUri(android.net.Uri.parse("https://www.deezer.com/album/$id"), extras)
+                true
+            }
+            "playlist" -> {
+                tc.playFromUri(android.net.Uri.parse("https://www.deezer.com/playlist/$id"), extras)
+                true
+            }
+            else -> false
+        }
+    }
+
     fun setShuffle(enabled: Boolean) {
         // TransportControls.setShuffleMode is not on the framework API.
         // Send a custom action that Deezer may honour; best-effort only.

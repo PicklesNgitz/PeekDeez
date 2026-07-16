@@ -6,6 +6,7 @@ import com.g2bridge.deezer.DeezerLauncher
 import com.g2bridge.deezer.ErrorResponse
 import com.g2bridge.deezer.HealthResponse
 import com.g2bridge.deezer.LaunchRequest
+import com.g2bridge.deezer.LaunchResponse
 import com.g2bridge.deezer.MediaControllerRegistry
 import com.g2bridge.deezer.NowPlaying
 import com.g2bridge.deezer.ShuffleRequest
@@ -138,13 +139,26 @@ object LocalApiServer {
 
             post("/launch") {
                 val req = call.receive<LaunchRequest>()
+                val safeType = req.type.lowercase().trim()
+                val safeId = req.id.trim()
+                if (safeType !in setOf("track", "album", "playlist", "radio")) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("invalid type"))
+                    return@post
+                }
+                // Try MediaController first (works from background on all Android versions).
+                // Fall back to activity intent if Deezer session not active yet.
+                val launched = DeezerController.playFromId(safeType, safeId)
+                if (launched) {
+                    call.respond(LaunchResponse(installed = true, uri = "deezer://$safeType/$safeId"))
+                    return@post
+                }
                 val ctx = appContext
                 if (ctx == null) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse("bridge has no app context"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse("no context"))
                     return@post
                 }
                 try {
-                    call.respond(DeezerLauncher.launch(ctx, req.type, req.id))
+                    call.respond(DeezerLauncher.launch(ctx, safeType, safeId))
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "invalid request"))
                 }

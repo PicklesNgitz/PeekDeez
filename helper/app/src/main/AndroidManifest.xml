@@ -7,6 +7,18 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <queries>
+        <package android:name="deezer.android.app" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="deezer" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="www.deezer.com" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="PeekDeez"

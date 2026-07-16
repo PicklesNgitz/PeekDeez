@@ -20,13 +20,18 @@ object DeezerLauncher {
         require(id.isNotEmpty() && id.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
             "Invalid launch id: $id"
         }
-        val uri = "deezer://$safeType/$id"
+        if (!isDeezerInstalled(ctx)) return LaunchResponse(installed = false, uri = "")
+
+        // HTTPS App Link is the most reliable trigger for Deezer playback.
+        val uri = "https://www.deezer.com/$safeType/$id"
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val resolved = ctx.packageManager.resolveActivity(intent, 0)
-        return if (resolved != null) {
+            .setPackage(DEEZER_PKG)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return try {
             ctx.startActivity(intent)
             LaunchResponse(installed = true, uri = uri)
-        } else LaunchResponse(installed = false, uri = uri)
+        } catch (e: Exception) {
+            LaunchResponse(installed = false, uri = uri)
+        }
     }
 }

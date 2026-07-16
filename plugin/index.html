@@ -3,33 +3,185 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-    <title>Even Hub Minimal</title>
+    <title>PeekDeez</title>
     <style>
+      *, *::before, *::after { box-sizing: border-box; }
+
       html, body {
         margin: 0;
         height: 100%;
-        /* ER brand dark-theme surface (#232323) + Neutral-200 text (#E5E5E5). */
-        background: #232323;
-        color: #E5E5E5;
-        font: 14px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-        /* Kill WebView zoom + iOS auto-sizing + rubber-band scroll. */
+        background: #1c1c1c;
+        color: #e5e5e5;
+        font: 15px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
         touch-action: manipulation;
         -webkit-text-size-adjust: 100%;
         overscroll-behavior: none;
       }
+
       #app {
-        display: flex;
         height: 100%;
+      }
+
+      /* ── Companion shell ─────────────────────────── */
+
+      .c-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+
+      .c-header {
+        display: flex;
         align-items: center;
-        justify-content: center;
-        padding: 24px;
-        box-sizing: border-box;
+        justify-content: space-between;
+        padding: 16px 16px 10px;
+        border-bottom: 1px solid #2e2e2e;
+        flex-shrink: 0;
+      }
+
+      .c-logo {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.3px;
+      }
+
+      .c-np {
+        font-size: 12px;
+        color: #777;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* ── Tabs ────────────────────────────────────── */
+
+      .c-tabs {
+        display: flex;
+        gap: 6px;
+        padding: 10px 16px 6px;
+        flex-shrink: 0;
+      }
+
+      .c-tab {
+        flex: 1;
+        padding: 7px 4px;
+        border: 1px solid #383838;
+        border-radius: 8px;
+        background: transparent;
+        color: #888;
+        font-size: 13px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.1s, border-color 0.1s, background 0.1s;
+      }
+
+      .c-tab--active {
+        border-color: #e5e5e5;
+        color: #e5e5e5;
+        background: #2e2e2e;
+      }
+
+      /* ── Search ──────────────────────────────────── */
+
+      .c-search-wrap {
+        padding: 6px 16px 10px;
+        flex-shrink: 0;
+      }
+
+      .c-search {
+        width: 100%;
+        padding: 10px 14px;
+        background: #262626;
+        border: 1px solid #383838;
+        border-radius: 10px;
+        color: #e5e5e5;
+        font-size: 15px;
+        outline: none;
+        -webkit-appearance: none;
+      }
+
+      .c-search:focus {
+        border-color: #555;
+      }
+
+      .c-search::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+      }
+
+      /* ── Results ─────────────────────────────────── */
+
+      .c-results {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 16px 80px;
+      }
+
+      .c-placeholder {
         text-align: center;
+        color: #555;
+        padding: 40px 0;
+        font-size: 14px;
+      }
+
+      .c-item {
+        padding: 13px 0;
+        border-bottom: 1px solid #242424;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }
+
+      .c-item:active {
+        opacity: 0.55;
+      }
+
+      .c-item-title {
+        font-size: 15px;
+        color: #e5e5e5;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .c-item-sub {
+        font-size: 12px;
+        color: #777;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* ── Toast ───────────────────────────────────── */
+
+      .c-toast {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%) translateY(80px);
+        background: #303030;
+        color: #e5e5e5;
+        padding: 10px 22px;
+        border-radius: 22px;
+        font-size: 14px;
+        transition: transform 0.2s ease;
+        pointer-events: none;
+        white-space: nowrap;
+        border: 1px solid #424242;
+      }
+
+      .c-toast--show {
+        transform: translateX(-50%) translateY(0);
       }
     </style>
   </head>
   <body>
-    <div id="app">Companion app is running. Check the glasses display.</div>
+    <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
