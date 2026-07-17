@@ -32,7 +32,17 @@ export function initCompanion(root: HTMLElement) {
         <div class="c-help-row"><span class="c-help-key">Swipe up/down</span><span>Scroll manually</span></div>
         <div class="c-help-row"><span class="c-help-key">Double tap</span><span>Back</span></div>
         <div class="c-help-section" style="margin-top:12px">Setup</div>
-        <div class="c-help-row" style="display:block;color:#aaa;font-size:13px;line-height:1.5">Open the PeekDeez Bridge app on your phone and tap Start Bridge before using the glasses controls.</div>
+        <div class="c-help-row" style="display:block">
+          <ol class="c-setup-steps">
+            <li>Download &amp; install <strong>PeekDeez Bridge</strong> on your phone</li>
+            <li>Enable <em>Install unknown apps</em> for your browser if prompted</li>
+            <li>Open <strong>Settings → Notification access</strong> and enable PeekDeez Bridge</li>
+            <li>Open PeekDeez Bridge and tap <strong>Start Bridge</strong></li>
+          </ol>
+          <a class="c-dl-btn" href="https://github.com/PicklesNgitz/PeekDeez/releases/latest" target="_blank">
+            Download PeekDeez Bridge
+          </a>
+        </div>
       </div>
 
       <div class="c-tabs" id="c-tabs">

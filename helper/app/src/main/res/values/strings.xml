@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PeekDeez</string>
+    <string name="app_name">PeekDeez Bridge</string>
     <string name="listener_channel">PeekDeez Bridge</string>
     <string name="listener_channel_desc">Keeps the PeekDeez bridge running while you use Deezer.</string>
     <string name="bridge_running">Bridge active</string>
